@@ -3,6 +3,7 @@ import torch
 from torch import nn
 from models import resnext
 import pdb
+from dataset.preprocess_data import *
 
 def generate_model( opt):
     assert opt.model in ['resnext']
@@ -36,3 +37,33 @@ def generate_model( opt):
 
     return model, model.parameters()
 
+class NormalizeLayer(torch.nn.Module):
+    """Standardize the channels of a batch of images by subtracting the dataset mean
+      and dividing by the dataset standard deviation.
+      In order to certify radii in original coordinates rather than standardized coordinates, we
+      add the Gaussian noise _before_ standardizing, which is why we have standardization be the first
+      layer of the classifier rather than as a part of preprocessing as is typical.
+      """
+
+    def __init__(self, means: List[float], sds: List[float]):
+        """
+        :param means: the channel means
+        :param sds: the channel standard deviations
+        """
+        super(NormalizeLayer, self).__init__()
+        self.means = torch.tensor(means)
+        self.sds = torch.tensor(sds)
+
+    def forward(self, input: torch.tensor):
+        (batch_size, num_channels, sample_duration, height, width) = input.shape
+        means = self.means.repeat((batch_size, sample_duration, height, width, 1)).permute(0, 4, 1, 2, 3)
+        sds = self.sds.repeat((batch_size, sample_duration, height, width, 1)).permute(0, 4, 1, 2, 3)
+        return (input - means) / sds
+
+def model_wrapper(model, opt):
+    if opt.normalize_layer:
+        if opt.dataset == "UCF101":
+            means = get_mean(opt.dataset)
+            sds = get_std(opt.dataset)
+            model = nn.Sequential(NormalizeLayer(means=means, sds=sds), model)
+    return model

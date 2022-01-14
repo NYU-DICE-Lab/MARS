@@ -19,14 +19,13 @@ import numpy as np
 import subprocess
 from tqdm import tqdm
        
-
 def extract(vid_dir, frame_dir, start, end, redo=False):
   class_list = sorted(os.listdir(vid_dir))[start:end]
 
   print("Classes =", class_list)
   
   for ic,cls in enumerate(class_list): 
-    vlist = sorted(os.listdir(vid_dir + cls))
+    vlist = sorted(os.listdir(os.path.join(vid_dir,cls)))
     print("")
     print(ic+1, len(class_list), cls, len(vlist))
     print("")

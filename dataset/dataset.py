@@ -147,14 +147,10 @@ def get_train_video(opt, frame_path, Total_frames):
     return clip
 
 
-
 class HMDB51_test(Dataset):
     """HMDB51 Dataset"""
     def __init__(self, train, opt, split=None):
-        """
-        Args:
-            opt   : config options
-            train : 0 for testing, 1 for training, 2 for validation 
+        """rt 1 == 0, 1 for training, 2 for validation 
             split : 1,2,3 
         Returns:
             (tensor(frames), class_id ): Shape of tensor C x T x H x W
@@ -245,27 +241,29 @@ class UCF101_test(Dataset):
         # Number of classes
         self.N = len(self.lab_names)
         assert self.N == 101
-
         self.class_idx = dict(zip(self.lab_names, index))   # Each label is mappped to a number
         self.idx_class = dict(zip(index, self.lab_names))   # Each number is mappped to a label
 
         # indexes for training/test set
-        split_lab_filenames = sorted([file for file in os.listdir(opt.annotation_path) if file.strip('.txt')[-1] ==str(split)])
+        split_lab_filenames = sorted([file for file in os.listdir(opt.annotation_path) if file.strip('.txt')[-1] == str(split)])
 
-        if self.train_valtest==1:
+        if self.train_val_test==1:
             split_lab_filenames = [f for f in split_lab_filenames if 'train' in f]
         else:
             split_lab_filenames = [f for f in split_lab_filenames if 'test' in f]
-        
+      
         self.data = []                                     # (filename , lab_id)
-        
+        print("f",os.path.join(self.opt.annotation_path, split_lab_filenames[0]))
         f = open(os.path.join(self.opt.annotation_path, split_lab_filenames[0]), 'r')
         for line in f:
             class_id = self.class_idx.get(line.split('/')[0]) - 1
             if os.path.exists(os.path.join(self.opt.frame_dir, line.strip('\n')[:-4])) == True:
                 self.data.append((os.path.join(self.opt.frame_dir, line.strip('\n')[:-4]), class_id))
-        
+            else:
+                print((os.path.join(self.opt.frame_dir, line.strip('\n')[:-4]), class_id))
         f.close()
+        print("Length of data", len(self.data))
+        
     def __len__(self):
         '''
         returns number of test set

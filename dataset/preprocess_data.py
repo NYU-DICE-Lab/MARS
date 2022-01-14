@@ -7,6 +7,8 @@ import random
 import numbers
 import pdb
 import time
+from typing import *
+from torchvision.transforms import transforms
 
 try:
     import accimage
@@ -261,6 +263,8 @@ def get_mean( dataset='HMDB51'):
         return [110.63666788, 103.16065604,  96.29023126]
     elif dataset == "HMDB51":
         return [0.36410178082273*255, 0.36032826208483*255, 0.31140866484224*255]
+    elif dataset == "UCF101":
+        return [0.4406, 0.4109, 0.3792]
 
 def get_std(dataset = 'HMDB51'):
 # Kinetics (10 videos for each class)
@@ -268,6 +272,8 @@ def get_std(dataset = 'HMDB51'):
         return [38.7568578, 37.88248729, 40.02898126]
     elif dataset == 'HMDB51':
         return [0.20658244577568*255, 0.20174469333003*255, 0.19790770088352*255]
+    elif dataset == "UCF101":
+        return [0.2564,0.2479,2582]
 
 
 def scale_crop(clip, train, opt): 
@@ -305,8 +311,12 @@ def scale_crop(clip, train, opt):
             I = MultiScaleCornerCrop(scale = scale_factor, size = opt.sample_size, crop_position = crop_position)(I)
             I = RandomHorizontalFlip(p = flip_prob)(I)
             if opt.modality == 'RGB':
-                I = ToTensor(1)(I)
-                I = Normalize(get_mean('activitynet'), [1,1,1])(I)
+                if opt.dataset == "UCF101":
+                    I = transforms.ToTensor()(I)
+                else:
+                    I = ToTensor(1)(I)
+                    I = Normalize(get_mean('activitynet'), [1,1,1])(I)
+                     
                 processed_clip[:, i, :, :] = I
 
             elif opt.modality == 'Flow':
@@ -341,10 +351,15 @@ def scale_crop(clip, train, opt):
         for i, I in enumerate(clip):
             I = Scale(opt.sample_size)(I)
             I = CenterCrop(opt.sample_size)(I)
-            I = ToTensor(1)(I)
+            if opt.dataset == "UCF101":
+                I = transforms.ToTensor()(I)
+            else:
+                I = ToTensor(1)(I)
 
             if opt.modality == 'RGB':
-                I = Normalize(get_mean('activitynet'), [1,1,1])(I)
+                if opt.dataset != "UCF101":
+                    I = Normalize(get_mean('activitynet'), [1,1,1])(I)
+                    
                 processed_clip[:, i, :, :] = I
 
             elif opt.modality == 'Flow':

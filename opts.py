@@ -3,6 +3,37 @@ import argparse
 
 def parse_opts():
     parser = argparse.ArgumentParser()
+    # noise
+    parser.add_argument(
+        "--noise_augment",
+        default=0,
+        type=int,
+        help="add noise augmentation")
+    parser.add_argument(
+        "--noise_sd",
+        default=0.0,
+        type=float,
+        help="standard deviation of Gaussian noise for data augmentation"
+    )
+    parser.add_argument(
+        "--start_noise_sd",
+        default=0.01,
+        type=float,
+        help="starting standard deviation of Gaussian noise for data augmentation"
+    )
+    parser.add_argument(
+        "--max_epoch_sd",
+        default=300,
+        type=int,
+        help="the number of epoch where we stop increasing the noise"
+    )
+    parser.add_argument(
+        "--update_step_sd",
+        default=10,
+        type=int,
+        help="the number of steps between each noise update",
+    )
+
     # Datasets 
     parser.add_argument(
         '--frame_dir',
@@ -113,7 +144,11 @@ def parse_opts():
         default=4, 
         type=int, 
         help='Number of workers for dataloader')
-
+    parser.add_argument(
+        '--normalize_layer',
+        default=1,
+        type=int,
+        help='use normalize layer')
     # optimizer parameters
     parser.add_argument(
         '--learning_rate',
@@ -157,7 +192,7 @@ def parse_opts():
         help='Weight of Flow augemented MSE loss')
     parser.add_argument(
         '--n_epochs',
-        default=400,
+        default=1000,
         type=int,
         help='Number of total epochs to run')
     parser.add_argument(

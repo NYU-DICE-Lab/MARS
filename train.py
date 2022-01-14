@@ -11,7 +11,7 @@ import torch
 from torch import nn
 from torch import optim
 from torch.optim import lr_scheduler
-from models.model import generate_model
+from models.model import generate_model, model_wrapper, NormalizeLayer
 from opts import parse_opts
 from torch.autograd import Variable
 import time
@@ -20,10 +20,25 @@ from utils import *
 #from utils import AverageMeter, calculate_accuracy
 import pdb
 
+def generate_noise_dict(opt):
+    '''
+    Function that return a dict that maps epoch to corresponding noise_sd, 
+    which will increase every update_step until reaches max_epoch
+    '''
+    dict_ = {}
+    iter = range(0, opt.max_epoch_sd, opt.update_step_sd)
+    noise_sd = opt.start_noise_sd
+    for i, ep in enumerate(iter):
+        for j in range(ep, ep + opt.update_step_sd):
+            dict_[j] = noise_sd + (opt.noise_sd-opt.start_noise_sd)/(len(iter)-1) * i
+
+    return dict_
+
 if __name__=="__main__":
     opt = parse_opts()
     print(opt)
-    
+
+    #create a noise dictionary_ft_begin_index=1
     opt.arch = '{}-{}'.format(opt.model, opt.model_depth)
     torch.manual_seed(opt.manual_seed)
 
@@ -43,10 +58,13 @@ if __name__=="__main__":
     val_dataloader   = DataLoader(val_data, batch_size = opt.batch_size, shuffle=True, num_workers = opt.n_workers, pin_memory = True, drop_last=True)
     print("Length of train datatloader = ",len(train_dataloader))
     print("Length of validation datatloader = ",len(val_dataloader))    
-   
+
     # define the model 
     print("Loading model... ", opt.model, opt.model_depth)
     model, parameters = generate_model(opt)
+
+    #wrap model
+    model = model_wrapper(model, opt)
     
     criterion = nn.CrossEntropyLoss().cuda()
 
@@ -90,7 +108,6 @@ if __name__=="__main__":
                 .format(opt.learning_rate, opt.momentum, dampening, opt. weight_decay, opt.nesterov))
     print("LR patience = ", opt.lr_patience)
     
-    
     optimizer = optim.SGD(
         parameters,
         lr=opt.learning_rate,
@@ -99,14 +116,24 @@ if __name__=="__main__":
         weight_decay=opt.weight_decay,
         nesterov=opt.nesterov)
 
-    if opt.resume_path1 != '':
-        optimizer.load_state_dict(torch.load(opt.resume_path1)['optimizer'])
+    # if opt.resume_path1 != '':
+    #     optimizer.load_state_dict(torch.load(opt.resume_path1)['optimizer'])
 
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=opt.lr_patience)
     
+    
+
+    #create noise dict
+    dict_noise = generate_noise_dict(opt)
+    print(dict_noise)
     print('run')
     for epoch in range(opt.begin_epoch, opt.n_epochs + 1):
-        
+        #standard deviation of the gaussian distribution
+        if(epoch not in dict_noise.keys()):
+            noise_sd = opt.noise_sd
+        else:
+            noise_sd = dict_noise[epoch]
+
         model.train()
         
         batch_time = AverageMeter()
@@ -118,10 +145,15 @@ if __name__=="__main__":
         #pdb.set_trace()
         for i, (inputs, targets) in enumerate(train_dataloader):
             data_time.update(time.time() - end_time)
-        
+
             targets = targets.cuda(non_blocking=True)
             inputs = Variable(inputs)
+            
+            if(opt.noise_augment == 1): #augment with noise
+                inputs = inputs + torch.randn_like(inputs)*noise_sd
+           
             targets = Variable(targets)
+
             outputs = model(inputs)
             loss = criterion(outputs, targets)
             acc = calculate_accuracy(outputs, targets)
@@ -140,14 +172,16 @@ if __name__=="__main__":
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                  'Acc {acc.val:.3f} ({acc.avg:.3f})'.format(
+                  'Acc {acc.val:.3f} ({acc.avg:.3f})\t'
+                  'Noise sd {noise_sd}'.format(
                       epoch,
-                      i + 1,
+                      i + 1,    
                       len(train_dataloader),
                       batch_time=batch_time,
                       data_time=data_time,
                       loss=losses,
-                      acc=accuracies))
+                      acc=accuracies,
+                      noise_sd=noise_sd))
                       
         if opt.log == 1:
             epoch_logger.log({
@@ -160,13 +194,13 @@ if __name__=="__main__":
         
         if epoch % opt.checkpoint == 0:
             if opt.pretrain_path:
-                save_file_path = os.path.join(log_path, 'PreKin_{}_{}_{}_train_batch{}_sample{}_clip{}_nest{}_damp{}_weight_decay{}_manualseed{}_model{}{}_ftbeginidx{}_varLR{}.pth'
+                save_file_path = os.path.join(log_path, 'PreKin_{}_{}_{}_train_batch{}_sample{}_clip{}_nest{}_damp{}_weight_decay{}_manualseed{}_model{}{}_ftbeginidx{}_varLR{}_sigma={}.pth'
                             .format(opt.dataset, opt.split, opt.modality, opt.batch_size, opt.sample_size, opt.sample_duration, opt.nesterov, opt.dampening, opt.weight_decay, opt.manual_seed, opt.model,
-                                    opt.model_depth, opt.ft_begin_index, epoch))
+                                    opt.model_depth, opt.ft_begin_index, epoch, noise_sd))
             else:
-                save_file_path = os.path.join(log_path, '{}_{}_{}_train_batch{}_sample{}_clip{}_nest{}_damp{}_weight_decay{}_manualseed{}_model{}{}_ftbeginidx{}_varLR{}.pth'
+                save_file_path = os.path.join(log_path, '{}_{}_{}_train_batch{}_sample{}_clip{}_nest{}_damp{}_weight_decay{}_manualseed{}_model{}{}_ftbeginidx{}_varLR{}_sigma={}.pth'
                             .format(opt.dataset, opt.split, opt.modality, opt.batch_size, opt.sample_size, opt.sample_duration, opt.nesterov, opt.dampening, opt.weight_decay, opt.manual_seed, opt.model,
-                                    opt.model_depth, opt.ft_begin_index, epoch))
+                                    opt.model_depth, opt.ft_begin_index, epoch, noise_sd))
             states = {
                 'epoch': epoch + 1,
                 'arch': opt.arch,
@@ -185,7 +219,9 @@ if __name__=="__main__":
         end_time = time.time()
         with torch.no_grad():
             for i, (inputs, targets) in enumerate(val_dataloader):
-                
+                if(opt.noise_augment == 1): #augment with noise
+                    inputs = inputs + torch.randn_like(inputs)*noise_sd
+                    
                 # pdb.set_trace()
                 data_time.update(time.time() - end_time)
                 targets = targets.cuda(non_blocking=True)

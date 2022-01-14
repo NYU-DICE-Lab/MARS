@@ -73,6 +73,7 @@ if __name__=="__main__":
                 inputs[k,:,:,:,:] = clip[:,k*opt.sample_duration:(k+1)*opt.sample_duration,:,:]   
 
             inputs_var = Variable(inputs)
+            input_var = inputs_var  + torch.randn_like(inputs_var)*0.12
             outputs_var= model(inputs_var)
 
             pred5 = np.array(torch.mean(outputs_var, dim=0, keepdim=True).topk(5, 1, True)[1].cpu().data[0])
