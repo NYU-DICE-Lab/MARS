@@ -11,7 +11,7 @@ import torch
 from torch import nn
 from torch import optim
 from torch.optim import lr_scheduler
-from models.model import generate_model
+from models.model import generate_model, model_wrapper, NormalizeLayer
 from opts import parse_opts
 from torch.autograd import Variable
 import time
@@ -40,6 +40,10 @@ if __name__=="__main__":
     
     # Loading model and checkpoint
     model, parameters = generate_model(opt)
+    
+    # wrap model
+    model = model_wrapper(model, opt)
+    
     if opt.resume_path1:
         print('loading checkpoint {}'.format(opt.resume_path1))
         checkpoint = torch.load(opt.resume_path1)
