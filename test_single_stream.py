@@ -11,7 +11,7 @@ import torch
 from torch import nn
 from torch import optim
 from torch.optim import lr_scheduler
-from models.model import generate_model, model_wrapper, NormalizeLayer
+from models.model import generate_model, model_wrapper
 from opts import parse_opts
 from torch.autograd import Variable
 import time
@@ -28,7 +28,7 @@ if __name__=="__main__":
     opt.arch = '{}-{}'.format(opt.model, opt.model_depth)
 
     print("Preprocessing validation data ...")
-    data   = globals()['{}_test'.format(opt.dataset)](split = opt.split, train = 0, opt = opt)
+    data   = globals()['{}_test'.format(opt.dataset)](split = opt.split, train = 2, opt = opt)
     print("Length of validation data = ", len(data))
     
     if opt.modality=='RGB': opt.input_channels = 3
@@ -40,15 +40,16 @@ if __name__=="__main__":
     
     # Loading model and checkpoint
     model, parameters = generate_model(opt)
-    
+
     # wrap model
     model = model_wrapper(model, opt)
-    
+
     if opt.resume_path1:
         print('loading checkpoint {}'.format(opt.resume_path1))
         checkpoint = torch.load(opt.resume_path1)
         assert opt.arch == checkpoint['arch']
         model.load_state_dict(checkpoint['state_dict'])
+
     model.eval()
 
     accuracies = AverageMeter()
@@ -68,6 +69,7 @@ if __name__=="__main__":
     with torch.no_grad():   
         for i, (clip, label) in enumerate(val_dataloader):
             clip = torch.squeeze(clip)
+            
             if opt.modality == 'RGB':
                 inputs = torch.Tensor(int(clip.shape[1]/opt.sample_duration), 3, opt.sample_duration, opt.sample_size, opt.sample_size)
             elif opt.modality == 'Flow':
@@ -75,16 +77,18 @@ if __name__=="__main__":
                     
             for k in range(inputs.shape[0]):
                 inputs[k,:,:,:,:] = clip[:,k*opt.sample_duration:(k+1)*opt.sample_duration,:,:]   
+            
+            if(opt.noise_augment == 1): #augment with noise
+                inputs = inputs + torch.randn_like(inputs)*opt.noise_sd
 
             inputs_var = Variable(inputs)
-            input_var = inputs_var  + torch.randn_like(inputs_var)*0.12
             outputs_var= model(inputs_var)
-
+            
             pred5 = np.array(torch.mean(outputs_var, dim=0, keepdim=True).topk(5, 1, True)[1].cpu().data[0])
-               
+            
             acc = float(pred5[0] == label[0])
                             
-            accuracies.update(acc, 1)            
+            accuracies.update(acc, 1)        
             
             line = "Video[" + str(i) + "] : \t top5 " + str(pred5) + "\t top1 = " + str(pred5[0]) +  "\t true = " +str(int(label[0])) + "\t video = " + str(accuracies.avg)
             print(line)
@@ -96,4 +100,3 @@ if __name__=="__main__":
     line = "Video accuracy = " + str(accuracies.avg) + '\n'
     if opt.log:
         f.write(line)
-    

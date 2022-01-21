@@ -121,8 +121,6 @@ if __name__=="__main__":
 
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=opt.lr_patience)
     
-    
-
     #create noise dict
     dict_noise = generate_noise_dict(opt)
     print(dict_noise)
@@ -143,71 +141,71 @@ if __name__=="__main__":
 
         end_time = time.time()
         #pdb.set_trace()
-        for i, (inputs, targets) in enumerate(train_dataloader):
-            data_time.update(time.time() - end_time)
+        # for i, (inputs, targets) in enumerate(train_dataloader):
+        #     data_time.update(time.time() - end_time)
 
-            targets = targets.cuda(non_blocking=True)
-            inputs = Variable(inputs)
+        #     targets = targets.cuda(non_blocking=True)
+        #     inputs = Variable(inputs)
             
-            if(opt.noise_augment == 1): #augment with noise
-                inputs = inputs + torch.randn_like(inputs)*noise_sd
+        #     if(opt.noise_augment == 1): #augment with noise
+        #         inputs = inputs + torch.randn_like(inputs)*noise_sd
            
-            targets = Variable(targets)
+        #     targets = Variable(targets)
 
-            outputs = model(inputs)
-            loss = criterion(outputs, targets)
-            acc = calculate_accuracy(outputs, targets)
+        #     outputs = model(inputs)
+        #     loss = criterion(outputs, targets)
+        #     acc = calculate_accuracy(outputs, targets)
 
-            losses.update(loss.item(), inputs.size(0))
-            accuracies.update(acc, inputs.size(0))
+        #     losses.update(loss.item(), inputs.size(0))
+        #     accuracies.update(acc, inputs.size(0))
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+        #     optimizer.zero_grad()
+        #     loss.backward()
+        #     optimizer.step()
 
-            batch_time.update(time.time() - end_time)
-            end_time = time.time()
+        #     batch_time.update(time.time() - end_time)
+        #     end_time = time.time()
 
-            print('Epoch: [{0}][{1}/{2}]\t'
-                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                  'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                  'Acc {acc.val:.3f} ({acc.avg:.3f})\t'
-                  'Noise sd {noise_sd}'.format(
-                      epoch,
-                      i + 1,    
-                      len(train_dataloader),
-                      batch_time=batch_time,
-                      data_time=data_time,
-                      loss=losses,
-                      acc=accuracies,
-                      noise_sd=noise_sd))
+        #     print('Epoch: [{0}][{1}/{2}]\t'
+        #           'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+        #           'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
+        #           'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+        #           'Acc {acc.val:.3f} ({acc.avg:.3f})\t'
+        #           'Noise sd {noise_sd}'.format(
+        #               epoch,
+        #               i + 1,    
+        #               len(train_dataloader),
+        #               batch_time=batch_time,
+        #               data_time=data_time,
+        #               loss=losses,
+        #               acc=accuracies,
+        #               noise_sd=noise_sd))
                       
-        if opt.log == 1:
-            epoch_logger.log({
-                'epoch': epoch,
-                'loss': losses.avg,
-                'acc': accuracies.avg,
-                'lr': optimizer.param_groups[0]['lr']
-            })
+        # if opt.log == 1:
+        #     epoch_logger.log({
+        #         'epoch': epoch,
+        #         'loss': losses.avg,
+        #         'acc': accuracies.avg,
+        #         'lr': optimizer.param_groups[0]['lr']
+        #     })
 
         
-        if epoch % opt.checkpoint == 0:
-            if opt.pretrain_path:
-                save_file_path = os.path.join(log_path, 'PreKin_{}_{}_{}_train_batch{}_sample{}_clip{}_nest{}_damp{}_weight_decay{}_manualseed{}_model{}{}_ftbeginidx{}_varLR{}_sigma={}.pth'
-                            .format(opt.dataset, opt.split, opt.modality, opt.batch_size, opt.sample_size, opt.sample_duration, opt.nesterov, opt.dampening, opt.weight_decay, opt.manual_seed, opt.model,
-                                    opt.model_depth, opt.ft_begin_index, epoch, noise_sd))
-            else:
-                save_file_path = os.path.join(log_path, '{}_{}_{}_train_batch{}_sample{}_clip{}_nest{}_damp{}_weight_decay{}_manualseed{}_model{}{}_ftbeginidx{}_varLR{}_sigma={}.pth'
-                            .format(opt.dataset, opt.split, opt.modality, opt.batch_size, opt.sample_size, opt.sample_duration, opt.nesterov, opt.dampening, opt.weight_decay, opt.manual_seed, opt.model,
-                                    opt.model_depth, opt.ft_begin_index, epoch, noise_sd))
-            states = {
-                'epoch': epoch + 1,
-                'arch': opt.arch,
-                'state_dict': model.state_dict(),
-                'optimizer': optimizer.state_dict(),
-            }
-            torch.save(states, save_file_path)
+        # if epoch % opt.checkpoint == 0:
+        #     if opt.pretrain_path:
+        #         save_file_path = os.path.join(log_path, 'PreKin_{}_{}_{}_train_batch{}_sample{}_clip{}_nest{}_damp{}_weight_decay{}_manualseed{}_model{}{}_ftbeginidx{}_varLR{}_sigma={}.pth'
+        #                     .format(opt.dataset, opt.split, opt.modality, opt.batch_size, opt.sample_size, opt.sample_duration, opt.nesterov, opt.dampening, opt.weight_decay, opt.manual_seed, opt.model,
+        #                             opt.model_depth, opt.ft_begin_index, epoch, noise_sd))
+        #     else:
+        #         save_file_path = os.path.join(log_path, '{}_{}_{}_train_batch{}_sample{}_clip{}_nest{}_damp{}_weight_decay{}_manualseed{}_model{}{}_ftbeginidx{}_varLR{}_sigma={}.pth'
+        #                     .format(opt.dataset, opt.split, opt.modality, opt.batch_size, opt.sample_size, opt.sample_duration, opt.nesterov, opt.dampening, opt.weight_decay, opt.manual_seed, opt.model,
+        #                             opt.model_depth, opt.ft_begin_index, epoch, noise_sd))
+        #     states = {
+        #         'epoch': epoch + 1,
+        #         'arch': opt.arch,
+        #         'state_dict': model.state_dict(),
+        #         'optimizer': optimizer.state_dict(),
+        #     }
+        #     torch.save(states, save_file_path)
         
         model.eval()
 
@@ -219,9 +217,11 @@ if __name__=="__main__":
         end_time = time.time()
         with torch.no_grad():
             for i, (inputs, targets) in enumerate(val_dataloader):
+                print(inputs.shape, torch.min(inputs), torch.max(inputs))
                 if(opt.noise_augment == 1): #augment with noise
                     inputs = inputs + torch.randn_like(inputs)*noise_sd
-                    
+                print(inputs.shape, torch.min(inputs), torch.max(inputs))
+                print()
                 # pdb.set_trace()
                 data_time.update(time.time() - end_time)
                 targets = targets.cuda(non_blocking=True)
@@ -254,6 +254,5 @@ if __name__=="__main__":
             val_logger.log({'epoch': epoch, 'loss': losses.avg, 'acc': accuracies.avg})
         scheduler.step(losses.avg)
         
-
 
 

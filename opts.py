@@ -258,6 +258,23 @@ def parse_opts():
     parser.add_argument(
         '--random_seed', default=1, type=bool, help='Manually set random seed of sampling validation clip')
     
+    #option for testing
+    parser.add_argument(
+        '--overlapping', default=0, type=int, help='test on overlapping chunks'
+    )
+
+    parser.add_argument(
+        '--chunk_size', default=64, type=int, help='chunk size'
+    )
+
+    parser.add_argument(
+        '--stride', default=5, type=int, help='stride'
+    )
+
+    parser.add_argument(
+        '--test_mode', default=0, type=int, help='set to 0 for training script, 1 for testing script'
+    )
+
     args = parser.parse_args()
 
     return args

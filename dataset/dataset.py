@@ -11,6 +11,34 @@ import glob
 #import dircache
 import pdb
 
+def get_test_video_overlapping_chunks(opt, frame_path, Total_frames):
+    frame_path_list = []
+    for f in os.listdir(frame_path):
+        if(f.endswith(".jpg")):
+            frame_path_list.append(f)
+    frame_path_list_index = list(range(len(frame_path_list)))
+    clip = []
+
+    if(len(frame_path_list_index) >= opt.chunk_size):
+     
+        for i in range(0, len(frame_path_list_index), opt.stride):
+            item_index = frame_path_list_index[i:i+64]
+       
+            if(len(item_index) == opt.chunk_size): #skip if not snough frames``
+                for ind in item_index:
+                    im = Image.open(os.path.join(frame_path, '%05d.jpg'%(ind+1)))
+                    clip.append(im.copy())
+                    im.close()
+
+    else: #not enough frames
+        item_index = frame_path_list_index
+        for i in range(0, opt.chunk_size - len(frame_path_list_index)):
+            item_index.append(frame_path_list_index[-1])
+        for ind in item_index:
+            im = Image.open(os.path.join(frame_path, '%05d.jpg'%(ind+1)))
+            clip.append(im.copy())
+            im.close()
+    return clip
 
 def get_test_video(opt, frame_path, Total_frames):
     """
@@ -21,7 +49,7 @@ def get_test_video(opt, frame_path, Total_frames):
         Returns:
             list(frames) : list of all video frames
         """
-
+    
     clip = []
     i = 0
     loop = 0
@@ -283,8 +311,14 @@ class UCF101_test(Dataset):
         if self.train_val_test == 0: 
             clip = get_test_video(self.opt, frame_path, Total_frames)
         else:
-            clip = get_train_video(self.opt, frame_path, Total_frames)
-                    
+            if(self.opt.test_mode):
+                if(self.opt.overlapping):
+                    clip = get_test_video_overlapping_chunks(self.opt, frame_path, Total_frames)
+                else:
+                    clip = get_test_video(self.opt, frame_path, Total_frames)
+            else:
+                clip = get_train_video(self.opt, frame_path, Total_frames)
+            
         return((scale_crop(clip, self.train_val_test, self.opt), label_id))
 
 class Kinetics_test(Dataset):
@@ -347,5 +381,3 @@ class Kinetics_test(Dataset):
 
 
         return((scale_crop(clip, self.train_val_test, self.opt), label_id))
-
-    
