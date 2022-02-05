@@ -139,7 +139,6 @@ def saveFlow(videoItem):
         except Exception as e:
             print("ERROR", cls, v, e)
 
-
 def extract_flows(vid_dir, frame_dir, start, end, gpu, redo=False):
     print('start = ', start, ' end = ', end)
     class_list = sorted(os.listdir(vid_dir))[start:end]
